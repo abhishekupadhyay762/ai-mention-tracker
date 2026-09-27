@@ -1,12 +1,18 @@
 import os
 import sys
+
+# Guarantee project root and cwd are in sys.path for Streamlit Cloud (Linux)
+root_dir = os.path.dirname(os.path.abspath(__file__))
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+cwd = os.getcwd()
+if cwd not in sys.path:
+    sys.path.insert(0, cwd)
+
 import time
 import threading
 import streamlit as st
 import streamlit.components.v1 as components
-
-# Add current directory to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app import app as flask_app
 

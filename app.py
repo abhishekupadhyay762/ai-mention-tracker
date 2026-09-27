@@ -1,5 +1,14 @@
 import os
 import sys
+
+# Guarantee project root and cwd are in sys.path for Streamlit Cloud (Linux)
+root_dir = os.path.dirname(os.path.abspath(__file__))
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
+cwd = os.getcwd()
+if cwd not in sys.path:
+    sys.path.insert(0, cwd)
+
 import json
 import time
 import random
@@ -8,12 +17,25 @@ import webbrowser
 import threading
 from pathlib import Path
 
-# Add current directory to sys.path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
 from flask import Flask, render_template, request, jsonify, session, Response, redirect, url_for
-from api.dataforseo import DataForSeoClient
-import db.storage
+
+try:
+    from api.dataforseo import DataForSeoClient
+except ImportError:
+    try:
+        from dataforseo import DataForSeoClient
+    except ImportError:
+        sys.path.append(os.path.join(root_dir, "api"))
+        from dataforseo import DataForSeoClient
+
+try:
+    import db.storage
+except ImportError:
+    try:
+        import storage as db_storage
+    except ImportError:
+        sys.path.append(os.path.join(root_dir, "db"))
+        import storage as db_storage
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)

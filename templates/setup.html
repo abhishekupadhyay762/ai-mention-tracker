@@ -1,0 +1,240 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-8">
+        <div class="flex items-center gap-2 mb-2">
+            <span class="px-3 py-1 bg-brand-100 text-brand-700 text-xs font-bold rounded-full uppercase tracking-wider">Campaign Setup</span>
+            <span class="text-xs text-slate-400 font-medium">Step 1 of 2</span>
+        </div>
+        <h2 class="text-3xl font-extrabold text-slate-900 tracking-tight">Setup AI Mention Tracker Audit</h2>
+        <p class="text-slate-500 mt-1 text-sm">Analyze your brand presence, share of voice, and citations across Google AI, ChatGPT, Perplexity, Gemini & Claude.</p>
+    </div>
+
+    <!-- Quick Presets -->
+    <div class="mb-6 bg-slate-900 text-slate-300 p-4 rounded-2xl flex items-center justify-between border border-slate-800 shadow-md">
+        <div class="flex items-center gap-3">
+            <span class="text-xl">⚡</span>
+            <div>
+                <h4 class="text-sm font-bold text-white">Quick Test Presets</h4>
+                <p class="text-xs text-slate-400">Load sample brand details & keywords with 1-click</p>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button type="button" onclick="loadPreset('ebook')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 rounded-lg border border-slate-700 transition">
+                📚 Ebook Services Preset
+            </button>
+            <button type="button" onclick="loadPreset('agency')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 rounded-lg border border-slate-700 transition">
+                🚀 Marketing Agency Preset
+            </button>
+        </div>
+    </div>
+
+    <form id="setupForm" class="space-y-8 bg-white p-8 rounded-2xl shadow-xl border border-slate-200/80" onsubmit="submitForm(event)">
+        
+        <!-- Section 1: API Setup -->
+        <section>
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-lg bg-brand-100 text-brand-600 flex items-center justify-center text-xs font-black">1</span>
+                    Multi-Model Data API
+                </h3>
+                <span class="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-semibold">Live API or Instant Demo</span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">DataForSEO API Login (Optional)</label>
+                    <input type="text" id="api_login" placeholder="your-login@email.com" class="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">DataForSEO API Password (Optional)</label>
+                    <input type="password" id="api_password" placeholder="••••••••" class="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition text-sm">
+                </div>
+            </div>
+
+            <div class="mt-4 flex items-center gap-3 bg-brand-50/70 p-4 rounded-xl border border-brand-100">
+                <input type="checkbox" id="use_demo" class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 cursor-pointer" checked>
+                <label for="use_demo" class="text-xs font-semibold text-brand-900 cursor-pointer">
+                    ⚡ Use Instant Demo Mode (Simulates responses without requiring DataForSEO API key)
+                </label>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-2">Uncheck Demo Mode to run live production queries with your <a href="https://dataforseo.com" target="_blank" class="text-brand-600 font-semibold underline">dataforseo.com</a> credentials.</p>
+        </section>
+
+        <!-- Section 2: Target Brand Profile -->
+        <section>
+            <div class="border-b border-slate-100 pb-3 mb-4">
+                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-lg bg-brand-100 text-brand-600 flex items-center justify-center text-xs font-black">2</span>
+                    Target Brand Profile
+                </h3>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Brand Domain</label>
+                    <input type="text" id="brand_domain" required placeholder="damcogroup.com" class="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Brand Name</label>
+                    <input type="text" id="brand_name" required placeholder="Damco Solutions" class="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Target Market Country</label>
+                    <select id="country" class="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm bg-white font-medium">
+                        <option value="United States">United States (US)</option>
+                        <option value="United Kingdom">United Kingdom (UK)</option>
+                        <option value="India">India (IN)</option>
+                        <option value="Canada">Canada (CA)</option>
+                        <option value="Australia">Australia (AU)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Target Language</label>
+                    <select id="language" class="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm bg-white font-medium">
+                        <option value="en">English (en)</option>
+                        <option value="es">Spanish (es)</option>
+                        <option value="fr">French (fr)</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Competitor Intelligence -->
+        <section>
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-lg bg-brand-100 text-brand-600 flex items-center justify-center text-xs font-black">3</span>
+                    Competitor Domains Benchmark
+                </h3>
+                <button type="button" onclick="addCompetitor()" class="text-xs font-bold text-brand-600 hover:text-brand-700 flex items-center gap-1">
+                    <span>+ Add Domain</span>
+                </button>
+            </div>
+            <div id="competitors-container" class="space-y-3">
+                <div class="flex gap-2">
+                    <input type="text" class="competitor-input w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="suntecindia.com">
+                    <button type="button" onclick="this.parentElement.remove()" class="px-3.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition font-bold">×</button>
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" class="competitor-input w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="papertrue.com">
+                    <button type="button" onclick="this.parentElement.remove()" class="px-3.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition font-bold">×</button>
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" class="competitor-input w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="bookbaby.com">
+                    <button type="button" onclick="this.parentElement.remove()" class="px-3.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition font-bold">×</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Keywords -->
+        <section>
+            <div class="border-b border-slate-100 pb-3 mb-4">
+                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-lg bg-brand-100 text-brand-600 flex items-center justify-center text-xs font-black">4</span>
+                    GEO Search Keywords Strategy
+                </h3>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">High-Volume Search Queries (one per line)</label>
+                    <textarea id="keywords_high" rows="4" class="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="best ebook conversion companies&#10;top data cleansing services"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Brand & Niche Queries (one per line)</label>
+                    <textarea id="keywords_brand" rows="4" class="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="damco solutions reviews&#10;damcogroup data services"></textarea>
+                </div>
+            </div>
+        </section>
+
+        <button type="submit" class="w-full gradient-btn text-white font-extrabold py-4 px-6 rounded-xl transition shadow-lg shadow-brand-600/25 flex items-center justify-center gap-2 text-base">
+            <span>🚀 Run GeoPulse AI Mention Audit</span>
+        </button>
+    </form>
+</div>
+
+<script>
+function addCompetitor() {
+    const container = document.getElementById('competitors-container');
+    const div = document.createElement('div');
+    div.className = 'flex gap-2';
+    div.innerHTML = `
+        <input type="text" class="competitor-input w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="competitor.com">
+        <button type="button" onclick="this.parentElement.remove()" class="px-3.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition font-bold">×</button>
+    `;
+    container.appendChild(div);
+}
+
+function loadPreset(type) {
+    if (type === 'ebook') {
+        document.getElementById('brand_domain').value = 'damcogroup.com';
+        document.getElementById('brand_name').value = 'Damco Solutions';
+        document.getElementById('keywords_high').value = 'best ebook conversion companies\ntop ebook publishing services';
+        document.getElementById('keywords_brand').value = 'damco solutions reviews';
+        const container = document.getElementById('competitors-container');
+        container.innerHTML = `
+            <div class="flex gap-2"><input type="text" class="competitor-input w-full border border-slate-200 p-3 rounded-xl text-sm" value="suntecindia.com"><button type="button" onclick="this.parentElement.remove()" class="px-3.5 text-slate-400 font-bold">×</button></div>
+            <div class="flex gap-2"><input type="text" class="competitor-input w-full border border-slate-200 p-3 rounded-xl text-sm" value="papertrue.com"><button type="button" onclick="this.parentElement.remove()" class="px-3.5 text-slate-400 font-bold">×</button></div>
+            <div class="flex gap-2"><input type="text" class="competitor-input w-full border border-slate-200 p-3 rounded-xl text-sm" value="bookbaby.com"><button type="button" onclick="this.parentElement.remove()" class="px-3.5 text-slate-400 font-bold">×</button></div>
+        `;
+    } else if (type === 'agency') {
+        document.getElementById('brand_domain').value = 'myagency.com';
+        document.getElementById('brand_name').value = 'Apex Marketing';
+        document.getElementById('keywords_high').value = 'best digital marketing agencies\ntop seo companies 2026';
+        document.getElementById('keywords_brand').value = 'apex marketing agency';
+        const container = document.getElementById('competitors-container');
+        container.innerHTML = `
+            <div class="flex gap-2"><input type="text" class="competitor-input w-full border border-slate-200 p-3 rounded-xl text-sm" value="agencyone.com"><button type="button" onclick="this.parentElement.remove()" class="px-3.5 text-slate-400 font-bold">×</button></div>
+            <div class="flex gap-2"><input type="text" class="competitor-input w-full border border-slate-200 p-3 rounded-xl text-sm" value="agencytwo.com"><button type="button" onclick="this.parentElement.remove()" class="px-3.5 text-slate-400 font-bold">×</button></div>
+        `;
+    }
+}
+
+async function submitForm(e) {
+    e.preventDefault();
+    
+    const competitors = Array.from(document.querySelectorAll('.competitor-input'))
+        .map(i => i.value.trim())
+        .filter(v => v);
+        
+    const data = {
+        api_login: document.getElementById('api_login').value,
+        api_password: document.getElementById('api_password').value,
+        use_demo: document.getElementById('use_demo').checked,
+        brand_domain: document.getElementById('brand_domain').value,
+        brand_name: document.getElementById('brand_name').value,
+        country: document.getElementById('country').value,
+        language: document.getElementById('language').value,
+        competitors: competitors,
+        keywords_high: document.getElementById('keywords_high').value,
+        keywords_brand: document.getElementById('keywords_brand').value,
+    };
+    
+    if(!data.use_demo && (!data.api_login.trim() || !data.api_password.trim())) {
+        alert("To run Live tracking (Demo Mode unchecked), you must enter your DataForSEO API Login & Password in Section 1.\n\nOtherwise, please keep Demo Mode checked.");
+        return;
+    }
+    
+    if(!data.keywords_high.trim() && !data.keywords_brand.trim()) {
+        alert("Please enter at least one search query keyword");
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/run', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if(result.status === 'ok') {
+            window.location.href = result.redirect;
+        } else {
+            alert(result.error || "An error occurred starting the run");
+        }
+    } catch (err) {
+        alert("Failed to connect to the GeoPulse AI server.");
+    }
+}
+</script>
+{% endblock %}

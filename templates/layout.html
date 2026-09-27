@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Mention Tracker — Brand Visibility & GEO Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#F5F3FF',
+                            100: '#EDE9FE',
+                            500: '#8B5CF6',
+                            600: '#7C3AED',
+                            700: '#6D28D9',
+                            900: '#4C1D95'
+                        },
+                        dark: {
+                            800: '#1E293B',
+                            900: '#0F172A',
+                            950: '#0B0F19'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .glass-card {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+        }
+        .gradient-btn {
+            background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);
+        }
+        .gradient-btn:hover {
+            background: linear-gradient(135deg, #6D28D9 0%, #5B21B6 100%);
+        }
+    </style>
+</head>
+<body class="bg-[#F8FAFC] text-slate-800 antialiased">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 bg-dark-950 text-slate-300 flex flex-col print:hidden border-r border-slate-800">
+            <div class="p-6 border-b border-slate-800/80">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-blue-500 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-brand-600/30">
+                        🤖
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-white leading-tight">AI Mention Tracker</h1>
+                        <span class="text-[11px] text-brand-500 font-semibold tracking-wide uppercase">Brand Intelligence</span>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="flex-1 px-4 py-6 space-y-2">
+                <a href="/" class="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm text-slate-200 bg-brand-600/15 border border-brand-500/30 text-brand-100 transition hover:bg-brand-600/25">
+                    <svg class="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    New Intelligence Run
+                </a>
+            </nav>
+            
+            <div class="p-5 border-t border-slate-800/80 text-xs text-slate-500">
+                <div class="flex items-center gap-2 mb-1 text-slate-400 font-medium">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Multi-Model GEO Engine
+                </div>
+                <p class="text-[11px]">Google AI • ChatGPT • Perplexity • Gemini • Claude</p>
+            </div>
+        </aside>
+        
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-auto bg-[#F8FAFC]">
+            <div class="p-8 max-w-7xl mx-auto" id="report-content">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+</body>
+</html>

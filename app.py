@@ -323,8 +323,12 @@ class StorageNamespace:
 
 storage = StorageNamespace()
 
-# Flask App Initialization
-app = Flask(__name__)
+# Flask App Initialization with explicit absolute template folder path
+template_dir = os.path.join(root_dir, "templates")
+if not os.path.exists(template_dir):
+    os.makedirs(template_dir, exist_ok=True)
+
+app = Flask(__name__, template_folder=template_dir)
 app.secret_key = os.urandom(24)
 
 # Ensure database exists

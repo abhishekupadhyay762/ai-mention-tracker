@@ -14,6 +14,10 @@ if root_dir not in sys.path:
 from flask import render_template
 from app import app as flask_app, init_db, create_run, save_result, save_competitor_metrics, get_run, get_results, get_competitor_metrics, get_history, DataForSeoClient
 
+# Explicitly bind template folder path for Jinja2 on Streamlit Cloud (Linux)
+template_dir = os.path.join(root_dir, "templates")
+flask_app.template_folder = template_dir
+
 # Initialize database
 init_db()
 

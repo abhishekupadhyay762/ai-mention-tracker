@@ -3,7 +3,7 @@ import sys
 import time
 import json
 import random
-import base64
+import re
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -55,21 +55,143 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+if "current_run_id" not in st.session_state:
+    st.session_state["current_run_id"] = None
 
-# ═══════════════════════════ HANDLE FORM SUBMISSION VIA QUERY PARAMS ═══════════════════════════
-query_params = st.query_params
+if st.session_state["current_run_id"]:
+    # ═══════════════════════════ DASHBOARD VIEW ═══════════════════════════
+    run_id = st.session_state["current_run_id"]
+    
+    # Render native reset button at top right
+    col1, col2 = st.columns([10, 1])
+    with col2:
+        st.write("")
+        if st.button("🔄 New Run"):
+            st.session_state["current_run_id"] = None
+            st.rerun()
 
-if "payload" in query_params:
-    try:
-        raw = query_params["payload"]
-        decoded = base64.b64decode(raw).decode("utf-8")
-        payload = json.loads(decoded)
-    except Exception:
-        payload = None
+    with flask_app.test_request_context():
+        run_data = get_run(run_id)
+        if not run_data:
+            st.session_state["current_run_id"] = None
+            st.rerun()
 
-    # Clear query params immediately
-    st.query_params.clear()
+        results = get_results(run_id)
+        metrics = get_competitor_metrics(run_id)
+        keywords = list(dict.fromkeys([r["keyword"] for r in results]))
+        platforms = ["google", "chat_gpt", "perplexity", "gemini", "claude"]
 
+        heatmap = {k: {p: None for p in platforms} for k in keywords}
+        for r in results:
+            heatmap[r["keyword"]][r["platform"]] = {
+                "mentioned": r["mentioned"],
+                "position": r["mention_position"],
+                "text": r["ai_response_text"],
+                "sources": json.loads(r["sources_cited"]) if r["sources_cited"] else []
+            }
+
+        platform_counts = {p: 0 for p in platforms}
+        for r in results:
+            if r["mentioned"]:
+                platform_counts[r["platform"]] += 1
+
+        history = get_history(run_data["brand_domain"])
+        trend_labels = []
+        trend_datasets = {}
+        for h in history:
+            rd = h['run']['run_date']
+            trend_labels.append(rd[:10] if isinstance(rd, str) else rd.strftime('%Y-%m-%d'))
+        for m in metrics:
+            domain = m['domain']
+            trend_datasets[domain] = []
+            for h in history:
+                val = next((item['total_mentions'] for item in h['metrics'] if item['domain'] == domain), 0)
+                trend_datasets[domain].append(val)
+
+        rendered_html = render_template(
+            "dashboard.html",
+            run=run_data, results=results, metrics=metrics,
+            heatmap=heatmap, platforms=platforms, keywords=keywords,
+            platform_counts=platform_counts, platform_breakdown=platform_counts,
+            history=history, trend_labels=trend_labels, trend_datasets=trend_datasets, json=json
+        )
+
+        dash_height = max(1600, 700 + len(keywords) * 120 + len(results) * 55)
+        components.html(rendered_html, height=dash_height, scrolling=True)
+
+else:
+    # ═══════════════════════════ SETUP FORM VIEW ═══════════════════════════
+    # We create a temporary custom component to render the raw HTML form and securely pass data back to Streamlit
+    component_dir = os.path.join(root_dir, "st_setup_component")
+    os.makedirs(component_dir, exist_ok=True)
+    
+    with flask_app.test_request_context():
+        rendered_html = render_template("setup.html")
+        
+        # Inject the Streamlit JS library and our custom submit handler
+        new_script = """
+<script src="https://cdn.jsdelivr.net/npm/streamlit-component-lib@1.3.0/dist/streamlit.js"></script>
+<script>
+window.addEventListener('load', function() {
+    Streamlit.setComponentReady();
+    Streamlit.setFrameHeight(1200);
+});
+
+// Overwrite the original submitForm function
+async function submitForm(e) {
+    e.preventDefault();
+    
+    const competitors = Array.from(document.querySelectorAll('.competitor-input'))
+        .map(i => i.value.trim())
+        .filter(v => v);
+        
+    const data = {
+        api_login: document.getElementById('api_login').value,
+        api_password: document.getElementById('api_password').value,
+        use_demo: document.getElementById('use_demo').checked,
+        brand_domain: document.getElementById('brand_domain').value,
+        brand_name: document.getElementById('brand_name').value,
+        country: document.getElementById('country').value,
+        language: document.getElementById('language').value,
+        competitors: competitors,
+        keywords_high: document.getElementById('keywords_high').value,
+        keywords_brand: document.getElementById('keywords_brand').value,
+    };
+    
+    if(!data.use_demo && (!data.api_login.trim() || !data.api_password.trim())) {
+        alert("To run Live tracking (Demo Mode unchecked), you must enter your DataForSEO API Login & Password.\\n\\nOtherwise, please keep Demo Mode checked.");
+        return;
+    }
+    
+    if(!data.keywords_high.trim() && !data.keywords_brand.trim()) {
+        alert("Please enter at least one search query keyword");
+        return;
+    }
+    
+    const btn = document.querySelector('button[type="submit"]');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳ Launching Audit... Please wait</span>';
+        btn.style.opacity = '0.7';
+    }
+    
+    // SEND DATA DIRECTLY TO STREAMLIT PYTHON BACKEND
+    Streamlit.setComponentValue(data);
+}
+</script>
+        """
+        
+        # Replace the existing submitForm script tag in setup.html with our Streamlit Component bridge
+        rendered_html = re.sub(r'async function submitForm.*?<\/script>', new_script, rendered_html, flags=re.DOTALL)
+        
+        with open(os.path.join(component_dir, "index.html"), "w", encoding="utf-8") as f:
+            f.write(rendered_html)
+            
+    # Declare the custom component and render it
+    setup_component = components.declare_component("setup_form", path=component_dir)
+    payload = setup_component()
+    
+    # When payload is received (user clicked Submit)
     if payload:
         brand_domain = (payload.get("brand_domain") or "example.com").strip()
         brand_name = (payload.get("brand_name") or "Your Brand").strip()
@@ -85,13 +207,17 @@ if "payload" in query_params:
         keywords = kw_high + kw_brand
 
         if not keywords:
-            keywords = ["digital marketing course"]
+            keywords = ["digital marketing"]
 
         if not api_login or not api_password:
             use_demo = True
 
-        # ── Create run ──
         run_id = create_run(brand_domain, brand_name, country, language)
+        
+        # Show Loading Progress
+        st.write(f"### 🚀 Running Audit for **{brand_name}**...")
+        progress_bar = st.progress(0, text="Starting AI Mention Audit...")
+        status_box = st.empty()
 
         client = None
         if not use_demo:
@@ -112,9 +238,6 @@ if "payload" in query_params:
 
         total_steps = len(keywords) * len(platforms)
         current_step = 0
-
-        progress_bar = st.progress(0, text="Starting AI Mention Audit...")
-        status_box = st.empty()
 
         for keyword in keywords:
             for platform_key, platform_name in platforms:
@@ -145,7 +268,7 @@ if "payload" in query_params:
                         result = {"text": f"⚠️ Query Exception: {ex}", "sources": []}
 
                 if use_demo or not result:
-                    time.sleep(0.08)
+                    time.sleep(0.05)
                     is_brand_mentioned = random.choice([True, True, False])
                     comp_mentioned = [c for c in clean_competitors if random.choice([True, False])]
                     result = _generate_demo_response(
@@ -198,144 +321,3 @@ if "payload" in query_params:
 
         st.session_state["current_run_id"] = run_id
         st.rerun()
-
-elif "action" in query_params and query_params["action"] == "reset":
-    st.query_params.clear()
-    if "current_run_id" in st.session_state:
-        del st.session_state["current_run_id"]
-    st.rerun()
-
-
-# ═══════════════════════════ RENDER VIEWS ═══════════════════════════
-run_id = st.session_state.get("current_run_id")
-
-with flask_app.test_request_context():
-    if run_id:
-        # ── DASHBOARD VIEW ──
-        run_data = get_run(run_id)
-        if not run_data:
-            st.session_state["current_run_id"] = None
-            st.rerun()
-
-        results = get_results(run_id)
-        metrics = get_competitor_metrics(run_id)
-
-        keywords = list(dict.fromkeys([r["keyword"] for r in results]))
-        platforms = ["google", "chat_gpt", "perplexity", "gemini", "claude"]
-
-        heatmap = {k: {p: None for p in platforms} for k in keywords}
-        for r in results:
-            heatmap[r["keyword"]][r["platform"]] = {
-                "mentioned": r["mentioned"],
-                "position": r["mention_position"],
-                "text": r["ai_response_text"],
-                "sources": json.loads(r["sources_cited"]) if r["sources_cited"] else []
-            }
-
-        platform_counts = {p: 0 for p in platforms}
-        for r in results:
-            if r["mentioned"]:
-                platform_counts[r["platform"]] += 1
-
-        history = get_history(run_data["brand_domain"])
-
-        trend_labels = []
-        trend_datasets = {}
-        for h in history:
-            rd = h['run']['run_date']
-            trend_labels.append(rd[:10] if isinstance(rd, str) else rd.strftime('%Y-%m-%d'))
-        for m in metrics:
-            domain = m['domain']
-            trend_datasets[domain] = []
-            for h in history:
-                val = next((item['total_mentions'] for item in h['metrics'] if item['domain'] == domain), 0)
-                trend_datasets[domain].append(val)
-
-        rendered_html = render_template(
-            "dashboard.html",
-            run=run_data,
-            results=results,
-            metrics=metrics,
-            heatmap=heatmap,
-            platforms=platforms,
-            keywords=keywords,
-            platform_counts=platform_counts,
-            platform_breakdown=platform_counts,
-            history=history,
-            trend_labels=trend_labels,
-            trend_datasets=trend_datasets,
-            json=json
-        )
-
-        # Replace Flask "New Run" link to use Streamlit query param reset
-        rendered_html = rendered_html.replace('href="/"', 'href="?action=reset"')
-
-        dash_height = max(1600, 700 + len(keywords) * 120 + len(results) * 55)
-        components.html(rendered_html, height=dash_height, scrolling=True)
-
-    else:
-        # ── SETUP FORM VIEW ──
-        rendered_html = render_template("setup.html")
-
-        # Replace the submitForm JS to encode data into query params instead of fetch('/api/run')
-        new_submit_js = """
-async function submitForm(e) {
-    e.preventDefault();
-    
-    const competitors = Array.from(document.querySelectorAll('.competitor-input'))
-        .map(i => i.value.trim())
-        .filter(v => v);
-        
-    const data = {
-        api_login: document.getElementById('api_login').value,
-        api_password: document.getElementById('api_password').value,
-        use_demo: document.getElementById('use_demo').checked,
-        brand_domain: document.getElementById('brand_domain').value,
-        brand_name: document.getElementById('brand_name').value,
-        country: document.getElementById('country').value,
-        language: document.getElementById('language').value,
-        competitors: competitors,
-        keywords_high: document.getElementById('keywords_high').value,
-        keywords_brand: document.getElementById('keywords_brand').value,
-    };
-    
-    if(!data.use_demo && (!data.api_login.trim() || !data.api_password.trim())) {
-        alert("To run Live tracking (Demo Mode unchecked), you must enter your DataForSEO API Login & Password.\\n\\nOtherwise, please keep Demo Mode checked.");
-        return;
-    }
-    
-    if(!data.keywords_high.trim() && !data.keywords_brand.trim()) {
-        alert("Please enter at least one search query keyword");
-        return;
-    }
-
-    // Show loading state on button
-    const btn = document.querySelector('button[type="submit"]');
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<span>⏳ Launching Audit... Please wait</span>';
-        btn.style.opacity = '0.7';
-    }
-    
-    // Encode payload as base64 and navigate via query param
-    const jsonStr = JSON.stringify(data);
-    const encoded = btoa(unescape(encodeURIComponent(jsonStr)));
-    
-    // Navigate parent (Streamlit) window to trigger rerun with payload
-    window.parent.location.href = window.parent.location.pathname + '?payload=' + encodeURIComponent(encoded);
-}
-"""
-
-        # Replace the old submitForm function with the new one
-        old_submit_start = "async function submitForm(e) {"
-        old_submit_end = "</script>"
-        
-        # Find and replace the submitForm function block
-        import re
-        pattern = r'async function submitForm\(e\) \{.*?\n\}'
-        rendered_html = re.sub(pattern, new_submit_js.strip(), rendered_html, flags=re.DOTALL)
-
-        # Also replace any href="/" links in the sidebar to use query param reset
-        rendered_html = rendered_html.replace('href="/"', 'href="?action=reset"')
-
-        components.html(rendered_html, height=1100, scrolling=True)

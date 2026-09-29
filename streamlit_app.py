@@ -62,7 +62,6 @@ if st.session_state["current_run_id"]:
     # ═══════════════════════════ DASHBOARD VIEW ═══════════════════════════
     run_id = st.session_state["current_run_id"]
     
-    # Render native reset button at top right
     col1, col2 = st.columns([10, 1])
     with col2:
         st.write("")
@@ -121,20 +120,30 @@ if st.session_state["current_run_id"]:
 
 else:
     # ═══════════════════════════ SETUP FORM VIEW ═══════════════════════════
-    # We create a temporary custom component to render the raw HTML form and securely pass data back to Streamlit
     component_dir = os.path.join(root_dir, "st_setup_component")
     os.makedirs(component_dir, exist_ok=True)
+    index_path = os.path.join(component_dir, "index.html")
     
     with flask_app.test_request_context():
         rendered_html = render_template("setup.html")
         
-        # Inject the Streamlit JS library and our custom submit handler
+        # Raw Native JavaScript to communicate with Streamlit without any external npm packages
         new_script = """
-<script src="https://cdn.jsdelivr.net/npm/streamlit-component-lib@1.3.0/dist/streamlit.js"></script>
-<script>
-window.addEventListener('load', function() {
-    Streamlit.setComponentReady();
-    Streamlit.setFrameHeight(1200);
+// Native Streamlit Component Communication Protocol
+function sendToStreamlit(type, data) {
+    var outData = Object.assign({
+        isStreamlitMessage: true,
+        type: type,
+    }, data);
+    window.parent.postMessage(outData, "*");
+}
+
+window.addEventListener("load", function() {
+    sendToStreamlit("streamlit:componentReady", {apiVersion: 1});
+    // Set height so it's not blank/0px
+    setTimeout(function() {
+        sendToStreamlit("streamlit:setFrameHeight", {height: 1400});
+    }, 100);
 });
 
 // Overwrite the original submitForm function
@@ -175,23 +184,31 @@ async function submitForm(e) {
         btn.style.opacity = '0.7';
     }
     
-    // SEND DATA DIRECTLY TO STREAMLIT PYTHON BACKEND
-    Streamlit.setComponentValue(data);
+    // SEND DATA DIRECTLY TO STREAMLIT
+    sendToStreamlit("streamlit:setComponentValue", {value: data});
 }
 </script>
         """
         
-        # Replace the existing submitForm script tag in setup.html with our Streamlit Component bridge
+        # Replace the existing submitForm script tag
         rendered_html = re.sub(r'async function submitForm.*?<\/script>', new_script, rendered_html, flags=re.DOTALL)
         
-        with open(os.path.join(component_dir, "index.html"), "w", encoding="utf-8") as f:
-            f.write(rendered_html)
+        # Only write if changed to avoid Streamlit reloading infinite loops
+        write_needed = True
+        if os.path.exists(index_path):
+            with open(index_path, "r", encoding="utf-8") as f:
+                if f.read() == rendered_html:
+                    write_needed = False
+                    
+        if write_needed:
+            with open(index_path, "w", encoding="utf-8") as f:
+                f.write(rendered_html)
             
-    # Declare the custom component and render it
+    # Declare and render
     setup_component = components.declare_component("setup_form", path=component_dir)
     payload = setup_component()
     
-    # When payload is received (user clicked Submit)
+    # Process the form submission
     if payload:
         brand_domain = (payload.get("brand_domain") or "example.com").strip()
         brand_name = (payload.get("brand_name") or "Your Brand").strip()
@@ -214,7 +231,6 @@ async function submitForm(e) {
 
         run_id = create_run(brand_domain, brand_name, country, language)
         
-        # Show Loading Progress
         st.write(f"### 🚀 Running Audit for **{brand_name}**...")
         progress_bar = st.progress(0, text="Starting AI Mention Audit...")
         status_box = st.empty()

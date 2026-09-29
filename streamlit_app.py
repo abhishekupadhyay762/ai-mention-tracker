@@ -131,19 +131,17 @@ def show_setup_form():
 
         # ── Section: Competitors ──
         st.markdown("##### ⚔️ Competitor Domains")
+        st.caption("Enter up to 5 competitor domains. Leave blank to skip.")
         competitor_values = []
-        cols = st.columns(3)
-        for i in range(st.session_state["num_competitors"]):
-            with cols[i % 3]:
+        cols = st.columns(5)
+        for i in range(5):
+            with cols[i]:
                 val = st.text_input(
                     f"Competitor {i+1}",
                     placeholder="competitor.com",
                     key=f"comp_{i}",
-                    label_visibility="collapsed" if i >= 3 else "visible"
                 )
                 competitor_values.append(val)
-
-        st.button("➕ Add Competitor", on_click=add_competitor, type="secondary")
         st.divider()
 
         # ── Section: Keywords ──

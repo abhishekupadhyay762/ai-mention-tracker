@@ -240,7 +240,7 @@ else:
         with col_api1:
             api_login = st.text_input("DataForSEO API Login (Email)", value=st.session_state.get("f_login", "seo@rockettech.in"), placeholder="your-login@email.com")
         with col_api2:
-            api_password = st.text_input("DataForSEO API Password", value=st.session_state.get("f_pass", "Parmar@5690"), type="password", placeholder="••••••••")
+            api_password = st.text_input("DataForSEO API Password", value=st.session_state.get("f_pass", "26251dfcab0fa608"), type="password", placeholder="••••••••")
 
         use_demo = st.checkbox("⚡ Use Instant Demo Mode (Simulates tracking without requiring API credit)", value=False)
         st.caption("Uncheck Demo Mode to run live queries with your DataForSEO credentials.")

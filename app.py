@@ -22,6 +22,30 @@ if cwd not in sys.path:
 
 from flask import Flask, render_template, request, jsonify, session, Response, redirect, url_for
 
+import re
+
+def extract_urls_from_text(text):
+    if not text:
+        return []
+    raw_urls = re.findall(r'https?://[^\s\)\]\>"\']+', text)
+    cleaned_urls = []
+    for url in raw_urls:
+        url_clean = url.rstrip('.,;:)]>')
+        if url_clean and url_clean not in cleaned_urls:
+            cleaned_urls.append(url_clean)
+    return cleaned_urls
+
+def extract_domains_from_text(text):
+    if not text:
+        return []
+    found_domains = set()
+    domains = re.findall(r'\b[a-zA-Z0-9-]+\.(?:com|org|net|io|in|co|ai|uk|ca|gov|edu|me|app)\b', text.lower())
+    ignored_domains = {"schema.org", "w3.org", "google.com", "wikipedia.org", "github.com", "twitter.com", "facebook.com", "linkedin.com", "schema.org"}
+    for d in domains:
+        if d not in ignored_domains:
+            found_domains.add(d)
+    return list(found_domains)
+
 # DataForSEO API Client
 class DataForSeoClient:
     def __init__(self, login, password):
@@ -38,7 +62,7 @@ class DataForSeoClient:
     def _make_request(self, endpoint, payload):
         url = f"{self.base_url}/{endpoint}"
         try:
-            response = requests.post(url, headers=self.headers, json=[payload], timeout=15)
+            response = requests.post(url, headers=self.headers, json=[payload], timeout=25)
             if response.status_code == 200:
                 res = response.json()
                 status_code = res.get("status_code")
@@ -48,7 +72,12 @@ class DataForSeoClient:
                     return {"error": f"DataForSEO API Error {status_code}: {status_msg}", "raw": res}
                 return {"data": res, "error": None}
             elif response.status_code in (401, 402, 403):
-                err_msg = f"DataForSEO Auth Error ({response.status_code}): Invalid Login/Password or Insufficient Balance."
+                try:
+                    res_json = response.json()
+                    detail = res_json.get("status_message") or response.text
+                except Exception:
+                    detail = response.text
+                err_msg = f"DataForSEO HTTP {response.status_code}: {detail}"
                 logging.error(err_msg)
                 return {"error": err_msg, "raw": response.text}
             else:
@@ -86,114 +115,153 @@ class DataForSeoClient:
             if task.get("status_code") != 20000:
                 return {"error": f"Task Status {task.get('status_code')}: {task.get('status_message')}"}
                 
-            results_list = task.get("result", [])
-            if not results_list or not results_list[0].get("items"):
+            results_list = task.get("result") or []
+            if not results_list:
+                return {"error": "Empty result from Google SERP"}
+            
+            first_result = results_list[0] if results_list else {}
+            items = first_result.get("items") or []
+            if not items:
                 return {"error": "Empty result items from Google SERP"}
-                
-            items = results_list[0]["items"]
+
             full_text = []
             sources = []
             
             for item in items:
+                if not isinstance(item, dict):
+                    continue
                 item_type = item.get("type", "")
                 if item_type in ("ai_overview", "ai_overview_element"):
                     if item.get("markdown"):
-                        full_text.append(item["markdown"])
+                        full_text.append(str(item["markdown"]))
                     elif item.get("text"):
-                        full_text.append(item["text"])
-                    for ref in item.get("references", []):
-                        if ref.get("url"):
+                        full_text.append(str(item["text"]))
+                    references = item.get("references") or []
+                    for ref in references:
+                        if isinstance(ref, dict) and ref.get("url"):
                             sources.append(ref["url"])
                 elif item_type == "organic":
-                    title = item.get("title", "")
-                    snippet = item.get("description", "") or item.get("snippet", "")
-                    url = item.get("url", "")
+                    title = item.get("title", "") or ""
+                    snippet = item.get("description", "") or item.get("snippet", "") or ""
+                    url = item.get("url", "") or ""
                     if title or snippet:
                         full_text.append(f"- **{title}**: {snippet}")
                     if url:
                         sources.append(url)
 
-            if not full_text:
+            combined_text = "\n\n".join(full_text)
+            if not combined_text:
                 return {"error": "No text extracted from SERP items"}
 
+            # Regex extract all URLs from text
+            text_urls = extract_urls_from_text(combined_text)
+            all_sources = list(dict.fromkeys(sources + text_urls))
+
             return {
-                "text": "\n\n".join(full_text[:6]),
-                "sources": list(dict.fromkeys(sources))[:8],
+                "text": combined_text[:4000],
+                "sources": all_sources[:15],
                 "error": None
             }
         except Exception as ex:
             return {"error": f"Parsing Error: {ex}"}
 
     def check_chatgpt(self, keyword):
-        return self._check_llm("ai_optimization/chat_gpt/llm_responses/live", keyword, "gpt-4.1-mini")
+        return self._check_llm("ai_optimization/chat_gpt/llm_responses/live", keyword, model_name="gpt-4.1-mini")
 
     def check_perplexity(self, keyword):
-        return self._check_llm("ai_optimization/perplexity/llm_responses/live", keyword, "sonar")
+        return self._check_llm("ai_optimization/perplexity/llm_responses/live", keyword, model_name="sonar")
 
     def check_gemini(self, keyword):
-        return self._check_llm("ai_optimization/gemini/llm_responses/live", keyword, "gemini-2.0-flash")
+        return self._check_llm("ai_optimization/gemini/llm_responses/live", keyword, model_name="gemini-2.5-flash-lite")
 
     def check_claude(self, keyword):
-        return self._check_llm("ai_optimization/claude/llm_responses/live", keyword, "claude-haiku-4-5")
+        return self._check_llm("ai_optimization/claude/llm_responses/live", keyword, model_name="claude-haiku-4-5")
 
-    def _check_llm(self, endpoint, keyword, model_name):
+    def _check_llm(self, endpoint, keyword, model_name=None):
         payload = {
-            "user_prompt": f"List top recommended companies and solutions for: {keyword}. Include company domain names and web sources.",
-            "model_name": model_name,
+            "user_prompt": f"What are the top recommended companies, services, and websites for: '{keyword}'? Provide exact brand names, official domain names, and website URLs.",
             "web_search": True,
             "max_output_tokens": 1000
         }
-        res = self._make_request(endpoint, payload)
-        if res.get("error"):
-            return {"error": res.get("error")}
-            
-        data = res.get("data")
-        if not data or not data.get("tasks"):
-            return {"error": "No task results returned from DataForSEO LLM API"}
-            
-        try:
-            task = data["tasks"][0]
-            if task.get("status_code") != 20000:
-                return {"error": f"LLM Task Error {task.get('status_code')}: {task.get('status_message')}"}
-                
-            results = task.get("result", [])
-            if not results or not results[0].get("items"):
-                return {"error": "Empty items returned from LLM API"}
-                
-            items = results[0]["items"]
-            full_text = []
-            sources = []
-            
-            for item in items:
-                if item.get("response"):
-                    full_text.append(item["response"])
-                if item.get("text"):
-                    full_text.append(item["text"])
-                if item.get("markdown"):
-                    full_text.append(item["markdown"])
-                    
-                sections = item.get("sections", [])
-                for section in sections:
-                    if section.get("text"):
-                        full_text.append(section["text"])
-                    for annotation in section.get("annotations", []):
-                        if annotation.get("url"):
-                            sources.append(annotation["url"])
-                            
-                for ref in item.get("references", []):
-                    if ref.get("url"):
-                        sources.append(ref["url"])
+        if model_name:
+            payload["model_name"] = model_name
 
-            if not full_text:
-                return {"error": "No response text found from LLM API"}
+        # Try up to 2 times with delay on rate limit
+        for attempt in range(2):
+            res = self._make_request(endpoint, payload)
+            if res.get("error"):
+                return {"error": res.get("error")}
+                
+            data = res.get("data")
+            if not data or not data.get("tasks"):
+                return {"error": "No task results returned from DataForSEO LLM API"}
+                
+            try:
+                task = data["tasks"][0]
+                task_status = task.get("status_code")
+                # Rate limit — wait and retry once
+                if task_status == 50301 and attempt == 0:
+                    logging.warning(f"Rate limited on {endpoint}, retrying in 5s...")
+                    time.sleep(5)
+                    continue
+                if task_status != 20000:
+                    return {"error": f"LLM Task Error {task_status}: {task.get('status_message')}"}
+                
+                results = task.get("result") or []
+                if not results:
+                    return {"error": "Empty result from LLM API"}
+                
+                first_result = results[0] if results else {}
+                items = first_result.get("items") or []
+                if not items:
+                    return {"error": "Empty items returned from LLM API"}
 
-            return {
-                "text": "\n\n".join(full_text),
-                "sources": list(dict.fromkeys(sources)),
-                "error": None
-            }
-        except Exception as ex:
-            return {"error": f"Parsing Error: {ex}"}
+                full_text = []
+                sources = []
+                
+                for item in items:
+                    if not isinstance(item, dict):
+                        continue
+                    if item.get("response"):
+                        full_text.append(str(item["response"]))
+                    if item.get("text"):
+                        full_text.append(str(item["text"]))
+                    if item.get("markdown"):
+                        full_text.append(str(item["markdown"]))
+                        
+                    sections = item.get("sections") or []
+                    for section in sections:
+                        if not isinstance(section, dict):
+                            continue
+                        if section.get("text"):
+                            full_text.append(str(section["text"]))
+                        annotations = section.get("annotations") or []
+                        for annotation in annotations:
+                            if isinstance(annotation, dict) and annotation.get("url"):
+                                sources.append(annotation["url"])
+                                
+                    references = item.get("references") or []
+                    for ref in references:
+                        if isinstance(ref, dict) and ref.get("url"):
+                            sources.append(ref["url"])
+
+                combined_text = "\n\n".join(full_text)
+                if not combined_text:
+                    return {"error": "No response text found from LLM API"}
+
+                # Regex extract all URLs from response text
+                text_urls = extract_urls_from_text(combined_text)
+                all_sources = list(dict.fromkeys(sources + text_urls))
+
+                return {
+                    "text": combined_text,
+                    "sources": all_sources[:15],
+                    "error": None
+                }
+            except Exception as ex:
+                return {"error": f"Parsing Error: {ex}"}
+        
+        return {"error": "Rate limit exceeded after retry"}
 
 # SQLite Database Layer
 BASE_DIR = Path(__file__).resolve().parent
@@ -496,6 +564,15 @@ def stream():
                         if comp in text_lower:
                             competitor_mentions.append(comp)
                             domain_mentions[comp] += 1
+
+                    # Dynamically discover all other brand domains present in AI response text
+                    discovered_domains = extract_domains_from_text(result["text"])
+                    for dom in discovered_domains:
+                        if dom != brand_domain and dom not in competitor_mentions and dom not in competitors:
+                            competitor_mentions.append(dom)
+                            if dom not in domain_mentions:
+                                domain_mentions[dom] = 0
+                            domain_mentions[dom] += 1
                             
                     save_result(
                         run_id=run_id,

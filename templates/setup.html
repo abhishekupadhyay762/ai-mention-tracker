@@ -43,12 +43,12 @@
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">DataForSEO API Login (Optional)</label>
-                    <input type="text" id="api_login" placeholder="your-login@email.com" class="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition text-sm">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">DataForSEO API Login</label>
+                    <input type="text" id="api_login" value="seo@rockettech.in" placeholder="your-login@email.com" class="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">DataForSEO API Password (Optional)</label>
-                    <input type="password" id="api_password" placeholder="••••••••" class="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition text-sm">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">DataForSEO API Password</label>
+                    <input type="password" id="api_password" value="Parmar@5690" placeholder="••••••••" class="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition text-sm">
                 </div>
             </div>
 
@@ -112,15 +112,7 @@
             </div>
             <div id="competitors-container" class="space-y-3">
                 <div class="flex gap-2">
-                    <input type="text" class="competitor-input w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="suntecindia.com">
-                    <button type="button" onclick="this.parentElement.remove()" class="px-3.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition font-bold">×</button>
-                </div>
-                <div class="flex gap-2">
-                    <input type="text" class="competitor-input w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="papertrue.com">
-                    <button type="button" onclick="this.parentElement.remove()" class="px-3.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition font-bold">×</button>
-                </div>
-                <div class="flex gap-2">
-                    <input type="text" class="competitor-input w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="bookbaby.com">
+                    <input type="text" class="competitor-input w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm" value="suntecindia.com" placeholder="suntecindia.com">
                     <button type="button" onclick="this.parentElement.remove()" class="px-3.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition font-bold">×</button>
                 </div>
             </div>
@@ -137,7 +129,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">High-Volume Search Queries (one per line)</label>
-                    <textarea id="keywords_high" rows="4" class="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="best ebook conversion companies&#10;top data cleansing services"></textarea>
+                    <textarea id="keywords_high" rows="4" class="w-full border border-slate-200 p-3 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm" placeholder="top ebook conversion companies for enterprise&#10;top data cleansing companies">top ebook conversion companies for enterprise&#10;top data cleansing companies</textarea>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Brand & Niche Queries (one per line)</label>
@@ -147,7 +139,7 @@
         </section>
 
         <button type="submit" class="w-full gradient-btn text-white font-extrabold py-4 px-6 rounded-xl transition shadow-lg shadow-brand-600/25 flex items-center justify-center gap-2 text-base">
-            <span>🚀 Run GeoPulse AI Mention Audit</span>
+            <span>🚀 Run AI Mention Tracker</span>
         </button>
     </form>
 </div>
@@ -173,8 +165,6 @@ function loadPreset(type) {
         const container = document.getElementById('competitors-container');
         container.innerHTML = `
             <div class="flex gap-2"><input type="text" class="competitor-input w-full border border-slate-200 p-3 rounded-xl text-sm" value="suntecindia.com"><button type="button" onclick="this.parentElement.remove()" class="px-3.5 text-slate-400 font-bold">×</button></div>
-            <div class="flex gap-2"><input type="text" class="competitor-input w-full border border-slate-200 p-3 rounded-xl text-sm" value="papertrue.com"><button type="button" onclick="this.parentElement.remove()" class="px-3.5 text-slate-400 font-bold">×</button></div>
-            <div class="flex gap-2"><input type="text" class="competitor-input w-full border border-slate-200 p-3 rounded-xl text-sm" value="bookbaby.com"><button type="button" onclick="this.parentElement.remove()" class="px-3.5 text-slate-400 font-bold">×</button></div>
         `;
     } else if (type === 'agency') {
         document.getElementById('brand_domain').value = 'myagency.com';

@@ -158,7 +158,7 @@ class DataForSeoClient:
             all_sources = list(dict.fromkeys(sources + text_urls))
 
             return {
-                "text": combined_text,
+                "text": combined_text[:4000],
                 "sources": all_sources[:15],
                 "error": None
             }
@@ -179,9 +179,9 @@ class DataForSeoClient:
 
     def _check_llm(self, endpoint, keyword, model_name=None):
         payload = {
-            "user_prompt": keyword,
+            "user_prompt": f"What are the top recommended companies, services, and websites for: '{keyword}'? Provide exact brand names, official domain names, and website URLs.",
             "web_search": True,
-            "max_output_tokens": 2500
+            "max_output_tokens": 1000
         }
         if model_name:
             payload["model_name"] = model_name
@@ -391,114 +391,6 @@ class StorageNamespace:
 
 storage = StorageNamespace()
 
-def _generate_demo_response(keyword, platform_name, brand_name, brand_domain, competitors, comp_mentioned, is_brand_mentioned):
-    """Generate a realistic, detailed simulated AI response for demo mode."""
-    
-    platform_intros = {
-        "Google AI Mode": f"Based on my analysis of top-rated services and recent reviews, here are the leading providers for **{keyword}**:\n\n",
-        "ChatGPT": f"Here's a comprehensive overview of the best options for **{keyword}** based on current market analysis, user reviews, and industry expertise:\n\n",
-        "Perplexity": f"After searching across multiple authoritative sources, here are the top recommendations for **{keyword}**:\n\n",
-        "Gemini": f"I've analyzed current offerings, customer reviews, and expert opinions to compile the best options for **{keyword}**:\n\n",
-        "Claude": f"Based on available information about **{keyword}**, here's a detailed analysis of the top providers and services:\n\n"
-    }
-    
-    intro = platform_intros.get(platform_name, f"Here are the top results for **{keyword}**:\n\n")
-    
-    text_parts = [intro]
-    sources = []
-    position = 1
-    
-    # Brand entry (detailed)
-    if is_brand_mentioned:
-        brand_upper = brand_name.title()
-        text_parts.append(
-            f"**{position}. {brand_upper}** ({brand_domain})\n"
-            f"{brand_upper} is widely recognized as a leading provider in the {keyword} space. "
-            f"They offer comprehensive solutions backed by years of industry experience, with a strong focus on "
-            f"customer satisfaction and innovative approaches. Their platform features intuitive tools, "
-            f"dedicated support teams, and competitive pricing that makes them accessible to businesses of all sizes. "
-            f"According to multiple user reviews and industry reports, {brand_upper} consistently ranks among the "
-            f"top choices for organizations looking for reliable {keyword} services. Their official website "
-            f"(https://{brand_domain}) provides detailed information about their service tiers, case studies, "
-            f"and customer testimonials.\n"
-            f"- Website: https://{brand_domain}\n"
-            f"- Key strengths: Comprehensive service offering, strong customer support, competitive pricing\n"
-            f"- Rating: 4.{random.randint(3,8)}/5 based on verified reviews\n\n"
-        )
-        sources.extend([
-            f"https://{brand_domain}",
-            f"https://{brand_domain}/services",
-            f"https://{brand_domain}/about",
-            f"https://www.g2.com/products/{brand_domain.split('.')[0]}/reviews",
-        ])
-        position += 1
-    
-    # Competitor entries (detailed)
-    for comp in comp_mentioned:
-        comp_name = comp.split('.')[0].replace('-', ' ').title()
-        text_parts.append(
-            f"**{position}. {comp_name}** ({comp})\n"
-            f"{comp_name} is another well-established player in the {keyword} market. "
-            f"They provide a range of services designed for both small businesses and enterprise clients. "
-            f"Their platform is known for its user-friendly interface and robust feature set. "
-            f"Many users praise their responsive customer service and transparent pricing model. "
-            f"Visit https://{comp} for more details on their offerings and to compare plans.\n"
-            f"- Website: https://{comp}\n"
-            f"- Key strengths: User-friendly platform, scalable solutions, good documentation\n"
-            f"- Rating: 4.{random.randint(0,6)}/5 based on verified reviews\n\n"
-        )
-        sources.extend([
-            f"https://{comp}",
-            f"https://{comp}/pricing",
-            f"https://www.trustpilot.com/review/{comp}",
-        ])
-        position += 1
-    
-    # Add generic industry entries to make it more realistic
-    generic_providers = [
-        ("Capterra", "https://www.capterra.com", f"Capterra's directory lists over 200 verified solutions for {keyword}, with detailed user reviews and comparison tools."),
-        ("G2", "https://www.g2.com", f"G2's marketplace features peer reviews from real users, helping businesses find the best {keyword} solutions."),
-        ("Clutch.co", "https://clutch.co", f"Clutch provides in-depth client reviews and data-driven content to help buyers find the best {keyword} agencies and service providers."),
-    ]
-    
-    selected_generics = random.sample(generic_providers, k=random.randint(1, 2))
-    for name, url, description in selected_generics:
-        text_parts.append(f"**Additional Resource: {name}** ({url})\n{description}\n\n")
-        sources.append(url)
-    
-    # Closing summary
-    text_parts.append(
-        f"---\n\n"
-        f"**Summary:** When choosing a provider for {keyword}, consider factors such as pricing transparency, "
-        f"customer support quality, platform features, integration capabilities, and verified user reviews. "
-        f"I recommend visiting each provider's website directly and requesting demos or trials before making "
-        f"a final decision. The market for {keyword} is competitive, with several strong options available "
-        f"depending on your specific requirements and budget.\n\n"
-        f"*Sources: The information above was compiled from official websites, "
-        f"industry review platforms (G2, Capterra, Trustpilot), and recent market analysis reports.*"
-    )
-    
-    # Add some industry review sources
-    sources.extend([
-        f"https://www.google.com/search?q={keyword.replace(' ', '+')}",
-        "https://www.g2.com/categories",
-        "https://www.capterra.com/categories",
-    ])
-    
-    # Deduplicate sources while preserving order
-    seen = set()
-    unique_sources = []
-    for s in sources:
-        if s not in seen:
-            seen.add(s)
-            unique_sources.append(s)
-    
-    return {
-        "text": "".join(text_parts),
-        "sources": unique_sources
-    }
-
-
 # Flask App Initialization with explicit absolute template folder path
 template_dir = os.path.join(root_dir, "templates")
 if not os.path.exists(template_dir):
@@ -643,12 +535,23 @@ def stream():
                         is_brand_mentioned = random.choice([True, True, False])
                         comp_mentioned = [c for c in competitors if random.choice([True, False])]
                         
-                        result = _generate_demo_response(
-                            keyword, platform_name, 
-                            config['brand_name'], config['brand_domain'],
-                            competitors, comp_mentioned,
-                            is_brand_mentioned
-                        )
+                        text_parts = [f"Summary for '{keyword}' on {platform_name}:"]
+                        sources = []
+                        
+                        if is_brand_mentioned:
+                            text_parts.append(f"Top recommendation includes {config['brand_name']} ({config['brand_domain']}) for comprehensive {keyword} solutions.")
+                            sources.append(f"https://{config['brand_domain']}/overview")
+                        else:
+                            text_parts.append(f"Leading platforms evaluated for {keyword}.")
+                            
+                        for comp in comp_mentioned:
+                            text_parts.append(f"Alternative: {comp.capitalize()} ({comp}).")
+                            sources.append(f"https://{comp}/features")
+                            
+                        result = {
+                            "text": "\n".join(text_parts),
+                            "sources": sources
+                        }
 
                     text_lower = result["text"].lower()
                     mentioned = brand_domain in text_lower or brand_name in text_lower

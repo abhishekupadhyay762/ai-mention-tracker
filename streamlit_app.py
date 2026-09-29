@@ -3,7 +3,6 @@ import sys
 import time
 import json
 import random
-import re
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -35,7 +34,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Hide Streamlit chrome, full width
+# Custom Styling to match the original purple brand theme
 st.markdown("""
 <style>
     #MainMenu {visibility: hidden;}
@@ -43,11 +42,52 @@ st.markdown("""
     header {visibility: hidden;}
     [data-testid="stHeader"] {display: none;}
     [data-testid="stSidebar"] {display: none;}
-    .block-container {
-        padding: 0rem !important;
-        margin: 0rem !important;
-        max-width: 100% !important;
+    
+    .main .block-container {
+        padding-top: 1.5rem !important;
+        padding-bottom: 2rem !important;
+        max-width: 1000px !important;
     }
+    
+    /* Card Container */
+    div[data-testid="stForm"] {
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 1.25rem !important;
+        padding: 2rem !important;
+        box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08) !important;
+    }
+    
+    /* Inputs Styling */
+    .stTextInput input, .stTextArea textarea, .stSelectbox select {
+        border-radius: 0.75rem !important;
+        border: 1px solid #cbd5e1 !important;
+        font-size: 0.95rem !important;
+    }
+    .stTextInput input:focus, .stTextArea textarea:focus {
+        border-color: #7C3AED !important;
+        box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2) !important;
+    }
+    
+    /* Submit Button (Purple Gradient) */
+    div[data-testid="stFormSubmitButton"] button {
+        background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%) !important;
+        color: white !important;
+        border: none !important;
+        padding: 0.85rem 2rem !important;
+        font-weight: 800 !important;
+        font-size: 1.05rem !important;
+        border-radius: 0.85rem !important;
+        width: 100% !important;
+        box-shadow: 0 4px 15px rgba(124, 58, 237, 0.35) !important;
+        transition: all 0.2s ease !important;
+    }
+    div[data-testid="stFormSubmitButton"] button:hover {
+        background: linear-gradient(135deg, #6D28D9 0%, #5B21B6 100%) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 20px rgba(124, 58, 237, 0.45) !important;
+    }
+    
     iframe {
         width: 100% !important;
         border: none !important;
@@ -58,8 +98,9 @@ st.markdown("""
 if "current_run_id" not in st.session_state:
     st.session_state["current_run_id"] = None
 
+
+# ───────────────────────── DASHBOARD VIEW ─────────────────────────
 if st.session_state["current_run_id"]:
-    # ═══════════════════════════ DASHBOARD VIEW ═══════════════════════════
     run_id = st.session_state["current_run_id"]
     
     col1, col2 = st.columns([10, 1])
@@ -118,131 +159,113 @@ if st.session_state["current_run_id"]:
         dash_height = max(1600, 700 + len(keywords) * 120 + len(results) * 55)
         components.html(rendered_html, height=dash_height, scrolling=True)
 
+
+# ───────────────────────── SETUP FORM VIEW ─────────────────────────
 else:
-    # ═══════════════════════════ SETUP FORM VIEW ═══════════════════════════
-    component_dir = os.path.join(root_dir, "st_setup_component")
-    os.makedirs(component_dir, exist_ok=True)
-    index_path = os.path.join(component_dir, "index.html")
-    
-    with flask_app.test_request_context():
-        rendered_html = render_template("setup.html")
+    st.markdown("""
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:6px;">
+        <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#7C3AED,#3B82F6);display:flex;align-items:center;justify-content:center;font-size:24px;color:white;box-shadow:0 4px 15px rgba(124,58,237,0.35);">🤖</div>
+        <div>
+            <h1 style="margin:0;font-size:28px;font-weight:800;color:#0F172A;letter-spacing:-0.5px;">AI Mention Tracker</h1>
+            <p style="margin:0;font-size:12px;color:#8B5CF6;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;">GEO Intelligence Engine</p>
+        </div>
+    </div>
+    <p style="color:#64748B;font-size:14px;margin-bottom:20px;">Analyze your brand presence, share of voice, and citations across Google AI, ChatGPT, Perplexity, Gemini & Claude.</p>
+    """, unsafe_allow_html=True)
+
+    with st.form("setup_form", clear_on_submit=False):
+        # 1. API Credentials
+        st.markdown("#### 🔑 1. DataForSEO Credentials")
+        col1, col2 = st.columns(2)
+        with col1:
+            api_login = st.text_input("DataForSEO API Login (Optional)", placeholder="your-email@example.com", key="api_login")
+        with col2:
+            api_password = st.text_input("DataForSEO API Password (Optional)", type="password", placeholder="••••••••", key="api_password")
         
-        # Raw Native JavaScript to communicate with Streamlit without any external npm packages
-        new_script = """
-// Native Streamlit Component Communication Protocol
-function sendToStreamlit(type, data) {
-    var outData = Object.assign({
-        isStreamlitMessage: true,
-        type: type,
-    }, data);
-    window.parent.postMessage(outData, "*");
-}
+        use_demo = st.checkbox("⚡ Use Instant Demo Mode (Simulates realistic AI responses without API credits)", value=True, key="use_demo")
+        st.caption("Uncheck Demo Mode to query live production models with your DataForSEO credentials.")
+        st.markdown("<hr style='margin: 1.2rem 0; border: none; border-top: 1px solid #f1f5f9;'>", unsafe_allow_html=True)
 
-window.addEventListener("load", function() {
-    sendToStreamlit("streamlit:componentReady", {apiVersion: 1});
-    // Set height so it's not blank/0px
-    setTimeout(function() {
-        sendToStreamlit("streamlit:setFrameHeight", {height: 1400});
-    }, 100);
-});
+        # 2. Target Brand Profile
+        st.markdown("#### 🏢 2. Target Brand Profile")
+        col1, col2 = st.columns(2)
+        with col1:
+            brand_domain = st.text_input("Brand Domain", value="damcogroup.com", placeholder="example.com", key="brand_domain")
+            country = st.selectbox("Target Market Country", [
+                "United States", "United Kingdom", "India", "Canada", "Australia", "Germany", "France"
+            ], index=0, key="country")
+        with col2:
+            brand_name = st.text_input("Brand Name", value="Damco Solutions", placeholder="Your Brand Name", key="brand_name")
+            language = st.selectbox("Language", [
+                ("en", "English (en)"), ("es", "Spanish (es)"), ("fr", "French (fr)"), ("de", "German (de)")
+            ], format_func=lambda x: x[1], index=0, key="language")
+        st.markdown("<hr style='margin: 1.2rem 0; border: none; border-top: 1px solid #f1f5f9;'>", unsafe_allow_html=True)
 
-// Overwrite the original submitForm function
-async function submitForm(e) {
-    e.preventDefault();
-    
-    const competitors = Array.from(document.querySelectorAll('.competitor-input'))
-        .map(i => i.value.trim())
-        .filter(v => v);
-        
-    const data = {
-        api_login: document.getElementById('api_login').value,
-        api_password: document.getElementById('api_password').value,
-        use_demo: document.getElementById('use_demo').checked,
-        brand_domain: document.getElementById('brand_domain').value,
-        brand_name: document.getElementById('brand_name').value,
-        country: document.getElementById('country').value,
-        language: document.getElementById('language').value,
-        competitors: competitors,
-        keywords_high: document.getElementById('keywords_high').value,
-        keywords_brand: document.getElementById('keywords_brand').value,
-    };
-    
-    if(!data.use_demo && (!data.api_login.trim() || !data.api_password.trim())) {
-        alert("To run Live tracking (Demo Mode unchecked), you must enter your DataForSEO API Login & Password.\\n\\nOtherwise, please keep Demo Mode checked.");
-        return;
-    }
-    
-    if(!data.keywords_high.trim() && !data.keywords_brand.trim()) {
-        alert("Please enter at least one search query keyword");
-        return;
-    }
-    
-    const btn = document.querySelector('button[type="submit"]');
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<span>⏳ Launching Audit... Please wait</span>';
-        btn.style.opacity = '0.7';
-    }
-    
-    // SEND DATA DIRECTLY TO STREAMLIT
-    sendToStreamlit("streamlit:setComponentValue", {value: data});
-}
-</script>
-        """
-        
-        # Replace the existing submitForm script tag
-        rendered_html = re.sub(r'async function submitForm.*?<\/script>', new_script, rendered_html, flags=re.DOTALL)
-        
-        # Only write if changed to avoid Streamlit reloading infinite loops
-        write_needed = True
-        if os.path.exists(index_path):
-            with open(index_path, "r", encoding="utf-8") as f:
-                if f.read() == rendered_html:
-                    write_needed = False
-                    
-        if write_needed:
-            with open(index_path, "w", encoding="utf-8") as f:
-                f.write(rendered_html)
-            
-    # Declare and render
-    setup_component = components.declare_component("setup_form", path=component_dir)
-    payload = setup_component()
-    
-    # Process the form submission
-    if payload:
-        brand_domain = (payload.get("brand_domain") or "example.com").strip()
-        brand_name = (payload.get("brand_name") or "Your Brand").strip()
-        country = payload.get("country", "United States")
-        language = payload.get("language", "en")
-        competitors = payload.get("competitors", [])
-        use_demo = payload.get("use_demo", True)
-        api_login = (payload.get("api_login") or "").strip()
-        api_password = (payload.get("api_password") or "").strip()
+        # 3. Competitor Intelligence
+        st.markdown("#### ⚔️ 3. Competitor Domains Benchmark")
+        st.caption("Enter competitor domains to benchmark against. Leave unused fields blank.")
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            comp1 = st.text_input("Competitor 1", value="suntecindia.com", placeholder="competitor1.com", key="comp1")
+            comp4 = st.text_input("Competitor 4", placeholder="competitor4.com", key="comp4")
+        with c2:
+            comp2 = st.text_input("Competitor 2", value="papertrue.com", placeholder="competitor2.com", key="comp2")
+            comp5 = st.text_input("Competitor 5", placeholder="competitor5.com", key="comp5")
+        with c3:
+            comp3 = st.text_input("Competitor 3", value="bookbaby.com", placeholder="competitor3.com", key="comp3")
+        st.markdown("<hr style='margin: 1.2rem 0; border: none; border-top: 1px solid #f1f5f9;'>", unsafe_allow_html=True)
 
-        kw_high = [k.strip() for k in payload.get("keywords_high", "").split("\n") if k.strip()]
-        kw_brand = [k.strip() for k in payload.get("keywords_brand", "").split("\n") if k.strip()]
-        keywords = kw_high + kw_brand
+        # 4. Keywords Strategy
+        st.markdown("#### 🔍 4. GEO Search Queries Strategy")
+        k_col1, k_col2 = st.columns(2)
+        with k_col1:
+            keywords_high = st.text_area(
+                "High-Volume Search Queries (one per line)",
+                value="best ebook conversion companies\ntop ebook publishing services",
+                height=110,
+                key="keywords_high"
+            )
+        with k_col2:
+            keywords_brand = st.text_area(
+                "Brand & Niche Queries (one per line)",
+                value="damco solutions reviews",
+                height=110,
+                key="keywords_brand"
+            )
 
-        if not keywords:
-            keywords = ["digital marketing"]
+        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+        submitted = st.form_submit_button("🚀 Run GeoPulse AI Mention Audit", use_container_width=True)
 
-        if not api_login or not api_password:
-            use_demo = True
+    if submitted:
+        bd = (brand_domain or "").strip()
+        bn = (brand_name or "").strip()
+        if not bd or not bn:
+            st.error("Please provide both Brand Domain and Brand Name.")
+            st.stop()
 
-        run_id = create_run(brand_domain, brand_name, country, language)
-        
-        st.write(f"### 🚀 Running Audit for **{brand_name}**...")
-        progress_bar = st.progress(0, text="Starting AI Mention Audit...")
-        status_box = st.empty()
+        kw_high = [k.strip() for k in (keywords_high or "").split("\n") if k.strip()]
+        kw_brand = [k.strip() for k in (keywords_brand or "").split("\n") if k.strip()]
+        all_keywords = kw_high + kw_brand
+        if not all_keywords:
+            st.error("Please enter at least one keyword query.")
+            st.stop()
+
+        raw_competitors = [comp1, comp2, comp3, comp4, comp5]
+        competitors = [c.strip().lower() for c in raw_competitors if c and c.strip()]
+
+        lang_code = language[0] if isinstance(language, tuple) else "en"
+        is_demo = use_demo or not api_login or not api_password
+
+        # ── EXECUTE AUDIT ──
+        run_id = create_run(bd, bn, country, lang_code)
 
         client = None
-        if not use_demo:
+        if not is_demo:
             client = DataForSeoClient(api_login, api_password)
 
-        clean_brand_domain = brand_domain.lower()
-        clean_brand_name = brand_name.lower()
-        clean_competitors = [c.lower() for c in competitors if c.strip()]
-        domain_mentions = {d: 0 for d in [clean_brand_domain] + clean_competitors}
+        clean_brand_domain = bd.lower()
+        clean_brand_name = bn.lower()
+        domain_mentions = {d: 0 for d in [clean_brand_domain] + competitors}
 
         platforms = [
             ("google", "Google AI Mode"),
@@ -252,20 +275,24 @@ async function submitForm(e) {
             ("claude", "Claude")
         ]
 
-        total_steps = len(keywords) * len(platforms)
+        total_steps = len(all_keywords) * len(platforms)
         current_step = 0
 
-        for keyword in keywords:
+        st.markdown(f"### ⚡ Running Live Audit for **{bn}**...")
+        progress_bar = st.progress(0, text="Initializing GEO Audit Engine...")
+        status_box = st.empty()
+
+        for keyword in all_keywords:
             for platform_key, platform_name in platforms:
                 current_step += 1
                 pct = current_step / total_steps
-                progress_bar.progress(pct, text=f"[{current_step}/{total_steps}] \"{keyword}\" → {platform_name}...")
+                progress_bar.progress(pct, text=f"[{current_step}/{total_steps}] Checking \"{keyword}\" on {platform_name}...")
 
                 result = None
-                if not use_demo and client:
+                if not is_demo and client:
                     try:
                         if platform_key == "google":
-                            res = client.check_google_ai_mode(keyword, country, language)
+                            res = client.check_google_ai_mode(keyword, country, lang_code)
                         elif platform_key == "chat_gpt":
                             res = client.check_chatgpt(keyword)
                         elif platform_key == "perplexity":
@@ -283,14 +310,14 @@ async function submitForm(e) {
                     except Exception as ex:
                         result = {"text": f"⚠️ Query Exception: {ex}", "sources": []}
 
-                if use_demo or not result:
-                    time.sleep(0.05)
+                if is_demo or not result:
+                    time.sleep(0.06)
                     is_brand_mentioned = random.choice([True, True, False])
-                    comp_mentioned = [c for c in clean_competitors if random.choice([True, False])]
+                    comp_mentioned = [c for c in competitors if random.choice([True, False])]
                     result = _generate_demo_response(
                         keyword, platform_name,
-                        brand_name, brand_domain,
-                        clean_competitors, comp_mentioned,
+                        bn, bd,
+                        competitors, comp_mentioned,
                         is_brand_mentioned
                     )
 
@@ -301,14 +328,14 @@ async function submitForm(e) {
                     domain_mentions[clean_brand_domain] += 1
 
                 competitor_mentions = []
-                for comp in clean_competitors:
+                for comp in competitors:
                     if comp in text_lower:
                         competitor_mentions.append(comp)
                         domain_mentions[comp] += 1
 
                 discovered_domains = extract_domains_from_text(result["text"])
                 for dom in discovered_domains:
-                    if dom != clean_brand_domain and dom not in competitor_mentions and dom not in clean_competitors:
+                    if dom != clean_brand_domain and dom not in competitor_mentions and dom not in competitors:
                         competitor_mentions.append(dom)
                         if dom not in domain_mentions:
                             domain_mentions[dom] = 0
@@ -325,14 +352,14 @@ async function submitForm(e) {
                     ai_response_text=result["text"]
                 )
 
-                icon = "✅" if mentioned else "❌"
-                status_box.markdown(f"`[{current_step}/{total_steps}]` **{keyword}** → {platform_name} {icon}")
+                icon = "✅ Mentioned" if mentioned else "❌ Not Featured"
+                status_box.markdown(f"`[{current_step}/{total_steps}]` **{keyword}** ({platform_name}) → **{icon}**")
 
         for domain, mentions in domain_mentions.items():
             sov = (mentions / total_steps) * 100 if total_steps > 0 else 0
             save_competitor_metrics(run_id, domain, mentions, None, round(sov, 1))
 
-        progress_bar.progress(1.0, text="✅ Audit complete! Loading dashboard...")
+        progress_bar.progress(1.0, text="✅ Audit complete! Generating executive dashboard...")
         time.sleep(0.5)
 
         st.session_state["current_run_id"] = run_id
